@@ -54,5 +54,3 @@ jobs:
           --form "CreateDate=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
           --form "attachmentData=@${{ steps.find_image.outputs.newest_image }};type=image/png" \
           --compressed
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
