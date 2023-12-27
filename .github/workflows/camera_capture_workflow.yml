@@ -19,18 +19,19 @@ jobs:
     - name: Set up timestamp and Download Image
       id: download
       run: |
-        timestamp=$(date +'%Y-%m-%d-%H-%M-%S')
-        year=${timestamp:0:4}
-        month=${timestamp:5:2}
-        day=${timestamp:8:2}
+        export TIMESTAMP=$(date +'%Y-%m-%d-%H-%M-%S')
+        echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+        year=${TIMESTAMP:0:4}
+        month=${TIMESTAMP:5:2}
+        day=${TIMESTAMP:8:2}
 
         mkdir -p "images/${year}/${month}/${day}"
-        curl -o "images/${year}/${month}/${day}/${timestamp}_Adams_St___Willoughby_St.jpg" https://webcams.nyctmc.org/api/cameras/b59bd3d2-0d72-4a65-8316-e79491c622e3/image
+        curl -o "images/${year}/${month}/${day}/${TIMESTAMP}_Adams_St___Willoughby_St.jpg" https://webcams.nyctmc.org/api/cameras/b59bd3d2-0d72-4a65-8316-e79491c622e3/image
 
     - name: Commit and Push Changes
       run: |
         git config --global user.name 'nycbikelanes'
         git config --global user.email 'nycbikelanes@users.noreply.github.com'
         git add images/
-        git commit -m "Add image for timestamp: $timestamp"
+        git commit -m "Add image for timestamp: $TIMESTAMP"
         git push
