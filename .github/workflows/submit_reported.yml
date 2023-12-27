@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   submit_report:
@@ -14,15 +13,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Find the newest image
-      id: find_image
-      run: |
-        newest_image=$(find images -type f -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -f2- -d' ')
-        echo "::set-output name=newest_image::$newest_image"
-
     - name: Submit Report
       run: |
         curl 'https://reported-web.herokuapp.com/submit' \
+          -X POST \
           -H 'Accept: application/json, text/plain, */*' \
           -H 'Accept-Language: en-US,en;q=0.9,it;q=0.8' \
           -H 'Connection: keep-alive' \
@@ -38,19 +32,19 @@ jobs:
           -H 'sec-ch-ua-platform: "Windows"' \
           --form "email=${{ secrets.EMAIL }}" \
           --form "password=${{ secrets.PASSWORD }}" \
-          --form "FirstName='test'" \
+          --form "FirstName=${{ secrets.FIRST_NAME }}" \
           --form "LastName=${{ secrets.LAST_NAME }}" \
           --form "Phone=${{ secrets.PHONE }}" \
           --form "testify=true" \
           --form "plate=MANY" \
           --form "licenseState=NY" \
           --form "typeofcomplaint=Blocked the bike lane" \
-          --form "reportDescription=many vehicles parked in bike lane" \
+          --form "reportDescription=many vehicles parked in the bike lane" \
           --form "can_be_shared_publicly=true" \
           --form "latitude=40.692752" \
           --form "longitude=-73.9885422" \
           --form "coordsAreInNyc=true" \
           --form "formatted_address=345 Adams St, Brooklyn, NY 11201, USA" \
           --form "CreateDate=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
-          --form "attachmentData=@${{ steps.find_image.outputs.newest_image }};type=image/png" \
+          --form "attachmentData=@images/2023/12/27/2023-12-27-13-08-00_Adams_St___Willoughby_St.jpg;type=image/png" \
           --compressed
