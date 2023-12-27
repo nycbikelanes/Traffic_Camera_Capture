@@ -38,7 +38,7 @@ jobs:
           -H 'sec-ch-ua-platform: "Windows"' \
           --form "email=${{ secrets.EMAIL }}" \
           --form "password=${{ secrets.PASSWORD }}" \
-          --form "FirstName=${{ secrets.FIRST_NAME }}" \
+          --form "FirstName='test'" \
           --form "LastName=${{ secrets.LAST_NAME }}" \
           --form "Phone=${{ secrets.PHONE }}" \
           --form "testify=true" \
