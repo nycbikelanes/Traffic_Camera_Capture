@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   submit_report:
@@ -12,6 +13,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+
+    - name: Find the newest image
+      id: find_image
+      run: |
+        newest_image=$(find images -type f -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -f2- -d' ')
+        echo "::set-output name=newest_image::$newest_image"
 
     - name: Submit Report
       run: |
