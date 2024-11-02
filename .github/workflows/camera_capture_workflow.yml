@@ -32,6 +32,7 @@ jobs:
 
         mkdir -p "images/${year}/${month}/${day}"
         curl -o "images/${year}/${month}/${day}/${TIMESTAMP}_Adams_St___Willoughby_St.jpg" https://webcams.nyctmc.org/api/cameras/b59bd3d2-0d72-4a65-8316-e79491c622e3/image
+        curl -o "60oldfulton/images/${year}/${month}/${day}/${TIMESTAMP}_60oldfulton.jpg" https://webcams.nyctmc.org/api/cameras/f134b133-75ef-40a8-8fbb-f9c51355e6b5/image
 
     - name: Commit and Push Changes
       run: |
