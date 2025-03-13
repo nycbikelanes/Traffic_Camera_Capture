@@ -32,8 +32,13 @@ jobs:
 
         mkdir -p "images/${year}/${month}/${day}"
         mkdir -p "images/60oldfulton/${year}/${month}/${day}"
+        mkdir -p "images/Adams-St-Tillary-St/${year}/${month}/${day}"
+        mkdir -p "images/BB71/${year}/${month}/${day}"
         curl -o "images/${year}/${month}/${day}/${TIMESTAMP}_Adams_St___Willoughby_St.jpg" https://webcams.nyctmc.org/api/cameras/b59bd3d2-0d72-4a65-8316-e79491c622e3/image
         curl -o "images/60oldfulton/${year}/${month}/${day}/${TIMESTAMP}_60oldfulton.jpg" https://webcams.nyctmc.org/api/cameras/f134b133-75ef-40a8-8fbb-f9c51355e6b5/image
+        curl -o "images/Adams-St-Tillary-St/${year}/${month}/${day}/${TIMESTAMP}_Adams-St-Tillary-St.jpg" https://webcams.nyctmc.org/api/cameras/5bd248b9-1dab-4118-b4b2-d3ef3fbd7085/image
+        curl -o "images/BB71/${year}/${month}/${day}/${TIMESTAMP}_BB71.jpg" https://webcams.nyctmc.org/api/cameras/14767de3-0b6f-4708-b63a-230f5883d932/image
+
 
     - name: Commit and Push Changes
       run: |
