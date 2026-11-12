@@ -1,52 +1,146 @@
+
 name: camera_capture_workflow
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Run every 5 minutes
+    - cron: '*/5 * * * *'
   workflow_dispatch:
+
+concurrency:
+  group: traffic-camera-capture
+  cancel-in-progress: false
 
 jobs:
   download-image:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     env:
       TZ: America/New_York
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workflows
+          sparse-checkout-cone-mode: true
 
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
+      - name: Download and validate camera images
+        id: download
+        shell: bash
+        run: |
+          set -uo pipefail
 
-    - name: Set up timestamp and Download Image
-      id: download
-      run: |
-        export TIMESTAMP=$(date +'%Y-%m-%d-%H-%M-%S')
-        echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-        year=${TIMESTAMP:0:4}
-        month=${TIMESTAMP:5:2}
-        day=${TIMESTAMP:8:2}
+          TIMESTAMP="$(date +'%Y-%m-%d-%H-%M-%S')"
+          YEAR="${TIMESTAMP:0:4}"
+          MONTH="${TIMESTAMP:5:2}"
+          DAY="${TIMESTAMP:8:2}"
 
-        mkdir -p "images/${year}/${month}/${day}"
-        mkdir -p "images/60oldfulton/${year}/${month}/${day}"
-        mkdir -p "images/Adams-St-Tillary-St/${year}/${month}/${day}"
-        mkdir -p "images/BB71/${year}/${month}/${day}"
-        mkdir -p "images/flatbush_ave_concord_st/${year}/${month}/${day}"
-        curl -o "images/${year}/${month}/${day}/${TIMESTAMP}_Adams_St___Willoughby_St.jpg" https://webcams.nyctmc.org/api/cameras/b59bd3d2-0d72-4a65-8316-e79491c622e3/image
-        curl -o "images/60oldfulton/${year}/${month}/${day}/${TIMESTAMP}_60oldfulton.jpg" https://webcams.nyctmc.org/api/cameras/f134b133-75ef-40a8-8fbb-f9c51355e6b5/image
-        curl -o "images/Adams-St-Tillary-St/${year}/${month}/${day}/${TIMESTAMP}_Adams-St-Tillary-St.jpg" https://webcams.nyctmc.org/api/cameras/5bd248b9-1dab-4118-b4b2-d3ef3fbd7085/image
-        curl -o "images/BB71/${year}/${month}/${day}/${TIMESTAMP}_BB71.jpg" https://webcams.nyctmc.org/api/cameras/14767de3-0b6f-4708-b63a-230f5883d932/image
-        curl -o "images/flatbush_ave_concord_st/${year}/${month}/${day}/${TIMESTAMP}_flatbush_ave_concord_st.jpg" https://webcams.nyctmc.org/api/cameras/5361a6ea-95fe-44e1-99f8-dc7d6964a427/image
+          echo "TIMESTAMP=$TIMESTAMP" >> "$GITHUB_ENV"
 
+          successes=0
+          failures=0
 
+          download_image() {
+            local name="$1"
+            local camera_id="$2"
+            local directory="$3"
+            local filename="$4"
+            local url="https://webcams.nyctmc.org/api/cameras/$camera_id/image"
+            local output="$directory/$filename"
+            local temporary="$output.part"
 
-    - name: Commit and Push Changes
-      run: |
-        git config --global user.name 'nycbikelanes'
-        git config --global user.email 'nycbikelanes@users.noreply.github.com'
-        git add images/
-        git commit -m "Add image for timestamp: $TIMESTAMP"
-        git push
+            mkdir -p "$directory"
+
+            echo "::group::Downloading $name"
+
+            if curl --fail --location --silent --show-error \
+                --retry 2 --retry-delay 2 --retry-all-errors \
+                --connect-timeout 10 --max-time 35 \
+                --output "$temporary" "$url" \
+              && test -s "$temporary" \
+              && test "$(wc -c < "$temporary")" -ge 1024 \
+              && file --brief --mime-type "$temporary" | grep -qx 'image/jpeg'; then
+
+              mv "$temporary" "$output"
+              echo "SUCCESS: $name ($(wc -c < "$output") bytes)"
+              successes=$((successes + 1))
+            else
+              echo "::error::FAILED: $name ($url)"
+              if test -f "$temporary"; then
+                wc -c "$temporary" || true
+                file "$temporary" || true
+                rm -f "$temporary"
+              fi
+              failures=$((failures + 1))
+            fi
+
+            echo "::endgroup::"
+          }
+
+          download_image \
+            "Adams St & Willoughby St" \
+            "b59bd3d2-0d72-4a65-8316-e79491c622e3" \
+            "images/$YEAR/$MONTH/$DAY" \
+            "${TIMESTAMP}_Adams_St___Willoughby_St.jpg"
+
+          download_image \
+            "60 Old Fulton" \
+            "f134b133-75ef-40a8-8fbb-f9c51355e6b5" \
+            "images/60oldfulton/$YEAR/$MONTH/$DAY" \
+            "${TIMESTAMP}_60oldfulton.jpg"
+
+          download_image \
+            "Adams St & Tillary St" \
+            "5bd248b9-1dab-4118-b4b2-d3ef3fbd7085" \
+            "images/Adams-St-Tillary-St/$YEAR/$MONTH/$DAY" \
+            "${TIMESTAMP}_Adams-St-Tillary-St.jpg"
+
+          download_image \
+            "BB71" \
+            "14767de3-0b6f-4708-b63a-230f5883d932" \
+            "images/BB71/$YEAR/$MONTH/$DAY" \
+            "${TIMESTAMP}_BB71.jpg"
+
+          download_image \
+            "Flatbush Ave & Concord St" \
+            "5361a6ea-95fe-44e1-99f8-dc7d6964a427" \
+            "images/flatbush_ave_concord_st/$YEAR/$MONTH/$DAY" \
+            "${TIMESTAMP}_flatbush_ave_concord_st.jpg"
+
+          echo "Successful downloads: $successes"
+          echo "Failed downloads: $failures"
+
+          echo "successes=$successes" >> "$GITHUB_OUTPUT"
+          echo "failures=$failures" >> "$GITHUB_OUTPUT"
+
+          if (( successes == 0 )); then
+            echo "::error::No valid camera images were downloaded."
+            exit 1
+          fi
+
+      - name: Commit and push captured images
+        if: steps.download.outputs.successes != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name 'nycbikelanes'
+          git config user.email 'nycbikelanes@users.noreply.github.com'
+
+          git add --sparse -- images/
+
+          if git diff --cached --quiet; then
+            echo "No new images to commit."
+            exit 0
+          fi
+
+          git commit -m "Capture traffic cameras: $TIMESTAMP"
+          git push
+
+      - name: Report incomplete capture
+        if: always() && steps.download.outputs.failures != '' && steps.download.outputs.failures != '0'
+        run: |
+          echo "::error::One or more camera downloads failed."
+          exit 1
